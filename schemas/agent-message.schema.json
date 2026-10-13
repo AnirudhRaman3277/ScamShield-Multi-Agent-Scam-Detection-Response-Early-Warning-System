@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentMessage",
+  "type": "object",
+  "required": ["case_id", "sender", "recipient", "message_type", "confidence", "rationale", "recommended_action", "status", "timestamp"],
+  "properties": {
+    "message_id": {"type": "string"},
+    "case_id": {"type": "string", "minLength": 1},
+    "state_version": {"type": "integer", "minimum": 0},
+    "sender": {"type": "string"},
+    "recipient": {"type": "string"},
+    "message_type": {"enum": ["DISCOVERY", "ANALYSIS_REQUEST", "RESEARCH_REQUEST", "VERIFICATION_REQUEST", "REVISION_REQUEST", "CONFLICT_REPORT", "APPROVAL", "REJECTION", "ALERT_DRAFT", "ALERT_REVISION", "ALERT_APPROVED", "ESCALATE"]},
+    "objective": {"type": "string"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}},
+    "findings": {"type": "array", "items": {"type": "string"}},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "rationale": {"type": "string", "minLength": 1},
+    "missing_information": {"type": "array", "items": {"type": "string"}},
+    "requested_action": {"type": "string"},
+    "recommended_action": {"enum": ["SEND_TO_ANALYSIS", "REQUEST_MORE_EVIDENCE", "REQUEST_MORE_USER_EVIDENCE", "SEND_TO_VERIFICATION", "REQUEST_REVISION", "KNOWN_SCAM_CONFIRMED", "EMERGING_PATTERN_CANDIDATE", "HELD_FOR_REVIEW", "ESCALATE", "RETRY"]},
+    "status": {"enum": ["IN_PROGRESS", "READY_FOR_VERIFICATION", "HELD_FOR_REVIEW", "FAILED"]},
+    "timestamp": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": true
+}

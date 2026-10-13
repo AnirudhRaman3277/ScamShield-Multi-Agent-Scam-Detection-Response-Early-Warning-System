@@ -1,0 +1,4 @@
+.env
+.n8n/
+n8n_data/
+*.log

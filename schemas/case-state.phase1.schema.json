@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Phase1CaseState",
+  "type": "object",
+  "required": ["case_id", "state_version", "suspected_scam", "sources", "evidence", "analysis", "research_count", "agent_history"],
+  "properties": {
+    "case_id": {"type": "string"},
+    "state_version": {"type": "integer", "minimum": 0},
+    "suspected_scam": {"type": "string"},
+    "sources": {"type": "array"},
+    "evidence": {"type": "array"},
+    "indicators": {"type": "array"},
+    "analysis": {"type": ["object", "null"]},
+    "missing_information": {"type": "array"},
+    "research_count": {"type": "integer", "minimum": 0},
+    "revision_count": {"type": "integer", "minimum": 0},
+    "agent_history": {"type": "array"}
+  },
+  "additionalProperties": true
+}
