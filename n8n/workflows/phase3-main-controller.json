@@ -1,0 +1,685 @@
+{
+  "name": "Phase 3 - Main Scam Alert Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scam-report-test",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000001",
+      "name": "Receive Frontend Report",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json.body ?? $input.first().json;\nconst narrative = String(payload.narrative ?? '').trim();\nif (!narrative) throw new Error('A report narrative is required.');\nconst now = new Date().toISOString();\nconst caseId = `SCAM-${Date.now()}`;\nconst evidence = [\n  ['Sender', payload.sender],\n  ['Claimed organisation', payload.organisation],\n  ['Website or profile', payload.url],\n  ['Payment request', payload.payment_reference],\n  ['Message text', payload.evidence_text],\n].filter(([, value]) => String(value ?? '').trim()).map(([name, text]) => ({ name, text: String(text).trim() }));\nreturn [{ json: {\n  case_state: { case_id: caseId, state_version: 0, suspected_scam: narrative, sources: [], evidence: [], indicators: [], analysis: null, confidence: { search: null, analysis: null, verification: null, alert: null }, verification_status: 'IN_PROGRESS', conflicts: [], missing_information: [], research_count: 0, revision_count: 0, retry_counts: { search: 0, telegram: 0 }, agent_history: [], final_alert: null, created_at: now, updated_at: now },\n  user_submission: { narrative, country: 'IN', evidence },\n  incoming_message: { case_id: caseId, sender: 'user_intake', recipient: 'scam_analysis_agent', message_type: 'ANALYSIS_REQUEST', objective: 'Structure this report and decide the next safe step.', evidence_refs: [], findings: [], confidence: 0, rationale: 'Submitted through the ScamShield test frontend.', missing_information: [], requested_action: 'ANALYSE_USER_REPORT', recommended_action: 'SEND_TO_ANALYSIS', status: 'IN_PROGRESS', timestamp: now }\n} }];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000002",
+      "name": "Initialise Case State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        390,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Select Phase 1 - Scam Analysis Agent"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000003",
+      "name": "Invoke Analysis Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        610,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const before=$('Initialise Case State').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'analysis',message:result.message,timestamp:new Date().toISOString()}]}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000004",
+      "name": "Merge Analysis Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        830,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "send-to-verification",
+              "leftValue": "={{ $json.last_message.recommended_action }}",
+              "rightValue": "SEND_TO_VERIFICATION",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000005",
+      "name": "Send To Verification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1050,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Select Phase 2 - Verification Agent"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000006",
+      "name": "Invoke Verification Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1270,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const before=$('Merge Analysis Patch').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'verification',message:result.message,timestamp:new Date().toISOString()}]}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000007",
+      "name": "Merge Verification Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1490,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "send-to-search",
+              "leftValue": "={{ $json.last_message.recommended_action }}",
+              "rightValue": "SEND_TO_SEARCH",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+          },
+          {
+            "id": "confirm-then-search",
+            "leftValue": "={{ $json.last_message.message_type }}",
+            "rightValue": "KNOWN_SCAM_CONFIRMED",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            }
+            }
+          ],
+        "combinator": "or"
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000008",
+      "name": "One Research Round Needed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1710,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c=$input.first().json; const limit=2; if((c.case_state.research_count??0)>=limit) { c.last_message={...c.last_message,recommended_action:'ESCALATE',status:'HELD_FOR_REVIEW',rationale:'Maximum research attempts reached.'}; return [{json:c}]; } return [{json:{case_state:c.case_state,incoming_message:c.last_message,event_log:c.event_log}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000009",
+      "name": "Prepare Bounded Search Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Select Phase 1 - Scam Search Agent"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000010",
+      "name": "Invoke Search Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2140,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const before=$('Prepare Bounded Search Request').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,incoming_message:result.message,last_message:result.message,event_log:[{agent:'search',message:result.message,timestamp:new Date().toISOString()}]}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000011",
+      "name": "Merge Search Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2360,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Select Phase 2 - Verification Agent"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000012",
+      "name": "Invoke Re-verification Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2580,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const before=$('Merge Search Patch').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'re_verification',message:result.message,timestamp:new Date().toISOString()}]}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000013",
+      "name": "Merge Re-verification Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "send-to-alert",
+              "leftValue": "={{ $json.last_message.recommended_action }}",
+              "rightValue": "SEND_TO_ALERT",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000014",
+      "name": "Alert Requested?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3020,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Select Phase 2 - Scam Alert Agent"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000015",
+      "name": "Invoke Alert Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3240,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const before=$('Alert Requested?').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'alert',message:result.message,timestamp:new Date().toISOString()}]}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000016",
+      "name": "Merge Alert Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3460,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\nconst state = c.case_state ?? {};\nconst alert = state.final_alert ?? {};\nconst text = typeof alert.public_message === 'string' ? alert.public_message.trim() : '';\nconst allowed = state.verification_status === 'APPROVED'\n  && state.verification?.publication_eligible === true\n  && c.last_message?.message_type === 'ALERT_APPROVED'\n  && Array.isArray(alert.evidence_refs)\n  && alert.evidence_refs.length > 0\n  && text.length > 0;\nreturn [{ json: {\n  ...c,\n  publication_allowed: allowed,\n  publication_reason: allowed ? 'All approval checks passed.' : 'Publication guard rejected this case.',\n  telegram_text: allowed ? text : ''\n} }];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000017",
+      "name": "Publication Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3680,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "publication-allowed-true",
+              "leftValue": "={{ $json.publication_allowed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000018",
+      "name": "Publication Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3900,
+        230
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $env.TELEGRAM_CHANNEL_ID }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.telegram_text }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000019",
+      "name": "Publish Approved Alert to Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4120,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const before=$('Publication Guard').first().json; const receipt=$input.first().json; return [{json:{...before,case_state:{...before.case_state,publication_status:'PUBLISHED',published_at:new Date().toISOString(),telegram_receipt:receipt},next_stage:'PUBLISHED',note:'Approved alert delivered to the configured Telegram test channel.'}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000020",
+      "name": "Record Publication Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4340,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c=$input.first().json; return [{json:{...c,next_stage:c.next_stage??c.last_message?.recommended_action??'HELD_FOR_REVIEW',note:c.note??'No Telegram call was made unless the publication guard passed.'}}];"
+      },
+      "id": "f54dc055-70f5-4f7f-9e44-000000000021",
+      "name": "Show Final Case Outcome",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4340,
+        460
+      ]
+    }
+  ],
+  "connections": {
+    "Receive Frontend Report": {
+      "main": [
+        [
+          {
+            "node": "Initialise Case State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialise Case State": {
+      "main": [
+        [
+          {
+            "node": "Invoke Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Analysis Patch": {
+      "main": [
+        [
+          {
+            "node": "Send To Verification?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send To Verification?": {
+      "main": [
+        [
+          {
+            "node": "Invoke Verification Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show Final Case Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke Verification Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge Verification Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Verification Patch": {
+      "main": [
+        [
+          {
+            "node": "One Research Round Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One Research Round Needed?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Bounded Search Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Requested?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bounded Search Request": {
+      "main": [
+        [
+          {
+            "node": "Invoke Search Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke Search Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge Search Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Search Patch": {
+      "main": [
+        [
+          {
+            "node": "Invoke Re-verification Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke Re-verification Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge Re-verification Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Re-verification Patch": {
+      "main": [
+        [
+          {
+            "node": "Alert Requested?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Requested?": {
+      "main": [
+        [
+          {
+            "node": "Invoke Alert Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show Final Case Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke Alert Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge Alert Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Alert Patch": {
+      "main": [
+        [
+          {
+            "node": "Publication Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publication Guard": {
+      "main": [
+        [
+          {
+            "node": "Publication Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publication Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Approved Alert to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Show Final Case Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Approved Alert to Telegram": {
+      "main": [
+        [
+          {
+            "node": "Record Publication Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Publication Receipt": {
+      "main": [
+        [
+          {
+            "node": "Show Final Case Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

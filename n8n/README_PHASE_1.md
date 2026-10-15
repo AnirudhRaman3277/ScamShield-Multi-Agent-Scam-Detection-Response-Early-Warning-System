@@ -15,7 +15,7 @@ There is no Python, JavaScript service, or external agent runtime. The reasoning
 4. Start the local runtime with `docker compose up -d`, then open `http://localhost:5678`.
 5. Ensure the Docker n8n service loads `.env` with `env_file: .env`.
 6. Restart n8n after changing environment values.
-7. In the n8n UI, import both workflow JSON files from **Workflows → Import from File**.
+7. In the n8n UI, import both workflow JSON files from **Workflows → Import from File**. In each agent's **When Executed by Another Workflow** trigger, ensure **Input data mode** is **Accept all data**. This is required by current n8n versions so the parent controller's case JSON is forwarded intact.
 
 Do not put API keys in workflow nodes or Git.
 
