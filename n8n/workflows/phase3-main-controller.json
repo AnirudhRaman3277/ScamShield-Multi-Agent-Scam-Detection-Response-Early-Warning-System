@@ -8,60 +8,70 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000001",
+      "id": "f3b30100-f146-4528-9512-ac2f2ba81388",
       "name": "Receive Frontend Report",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        180,
-        360
-      ]
+        11008,
+        7312
+      ],
+      "webhookId": "980dd1ee-b7c5-4fc9-9d13-3291e86eb9ea"
     },
     {
       "parameters": {
         "jsCode": "const payload = $input.first().json.body ?? $input.first().json;\nconst narrative = String(payload.narrative ?? '').trim();\nif (!narrative) throw new Error('A report narrative is required.');\nconst now = new Date().toISOString();\nconst caseId = `SCAM-${Date.now()}`;\nconst evidence = [\n  ['Sender', payload.sender],\n  ['Claimed organisation', payload.organisation],\n  ['Website or profile', payload.url],\n  ['Payment request', payload.payment_reference],\n  ['Message text', payload.evidence_text],\n].filter(([, value]) => String(value ?? '').trim()).map(([name, text]) => ({ name, text: String(text).trim() }));\nreturn [{ json: {\n  case_state: { case_id: caseId, state_version: 0, suspected_scam: narrative, sources: [], evidence: [], indicators: [], analysis: null, confidence: { search: null, analysis: null, verification: null, alert: null }, verification_status: 'IN_PROGRESS', conflicts: [], missing_information: [], research_count: 0, revision_count: 0, retry_counts: { search: 0, telegram: 0 }, agent_history: [], final_alert: null, created_at: now, updated_at: now },\n  user_submission: { narrative, country: 'IN', evidence },\n  incoming_message: { case_id: caseId, sender: 'user_intake', recipient: 'scam_analysis_agent', message_type: 'ANALYSIS_REQUEST', objective: 'Structure this report and decide the next safe step.', evidence_refs: [], findings: [], confidence: 0, rationale: 'Submitted through the ScamShield test frontend.', missing_information: [], requested_action: 'ANALYSE_USER_REPORT', recommended_action: 'SEND_TO_ANALYSIS', status: 'IN_PROGRESS', timestamp: now }\n} }];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000002",
+      "id": "0b075d93-e8df-4e50-9764-e5f39d3e640c",
       "name": "Initialise Case State",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        390,
-        360
+        11216,
+        7312
       ]
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
+          "value": "itegQqW50cfwqglq",
           "mode": "list",
-          "cachedResultName": "Select Phase 1 - Scam Analysis Agent"
+          "cachedResultUrl": "/workflow/itegQqW50cfwqglq",
+          "cachedResultName": "Phase 1 - Scam Analysis Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
         },
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000003",
+      "id": "5a0e6f65-ac50-4cb0-abe0-2f2a52967ecf",
       "name": "Invoke Analysis Agent",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        610,
-        360
+        11440,
+        7312
       ]
     },
     {
       "parameters": {
         "jsCode": "const before=$('Initialise Case State').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'analysis',message:result.message,timestamp:new Date().toISOString()}]}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000004",
+      "id": "9f57595e-16f3-434d-ba82-7e6aca854031",
       "name": "Merge Analysis Patch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        830,
-        360
+        11664,
+        7312
       ]
     },
     {
@@ -85,49 +95,59 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000005",
+      "id": "a25ddc8f-1ce4-4b12-871b-bb7682695e90",
       "name": "Send To Verification?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1050,
-        360
+        11872,
+        7312
       ]
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
+          "value": "HEEneTO6A6nNTT1l",
           "mode": "list",
-          "cachedResultName": "Select Phase 2 - Verification Agent"
+          "cachedResultUrl": "/workflow/HEEneTO6A6nNTT1l",
+          "cachedResultName": "Phase 2 - Verification Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
         },
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000006",
+      "id": "1a59d18b-105d-4efb-922b-3c26f5b81c5b",
       "name": "Invoke Verification Agent",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1270,
-        230
+        12096,
+        7184
       ]
     },
     {
       "parameters": {
         "jsCode": "const before=$('Merge Analysis Patch').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'verification',message:result.message,timestamp:new Date().toISOString()}]}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000007",
+      "id": "fbfe99ed-b4e0-4956-bfeb-1aee1ab9e512",
       "name": "Merge Verification Patch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1490,
-        230
+        12320,
+        7184
       ]
     },
     {
@@ -148,108 +168,127 @@
                 "type": "string",
                 "operation": "equals"
               }
-          },
-          {
-            "id": "confirm-then-search",
-            "leftValue": "={{ $json.last_message.message_type }}",
-            "rightValue": "KNOWN_SCAM_CONFIRMED",
-            "operator": {
-              "type": "string",
-              "operation": "equals"
-            }
+            },
+            {
+              "id": "confirm-then-search",
+              "leftValue": "={{ $json.last_message.message_type }}",
+              "rightValue": "KNOWN_SCAM_CONFIRMED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
-        "combinator": "or"
-        }
+          "combinator": "or"
+        },
+        "options": {}
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000008",
+      "id": "bf5765d9-3963-47b5-bbea-bbcbd09b5e22",
       "name": "One Research Round Needed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1710,
-        230
+        12544,
+        7184
       ]
     },
     {
       "parameters": {
         "jsCode": "const c=$input.first().json; const limit=2; if((c.case_state.research_count??0)>=limit) { c.last_message={...c.last_message,recommended_action:'ESCALATE',status:'HELD_FOR_REVIEW',rationale:'Maximum research attempts reached.'}; return [{json:c}]; } return [{json:{case_state:c.case_state,incoming_message:c.last_message,event_log:c.event_log}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000009",
+      "id": "df7eeb67-7619-4847-bc4c-897e10f1bb5e",
       "name": "Prepare Bounded Search Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1920,
-        100
+        12752,
+        7040
       ]
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
+          "value": "Oyr7kvWm4rpGmjB8",
           "mode": "list",
-          "cachedResultName": "Select Phase 1 - Scam Search Agent"
+          "cachedResultUrl": "/workflow/Oyr7kvWm4rpGmjB8",
+          "cachedResultName": "Phase 1 - Scam Search Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
         },
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000010",
+      "id": "64034357-9a95-436c-804f-e92a00021398",
       "name": "Invoke Search Agent",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2140,
-        100
+        12976,
+        7040
       ]
     },
     {
       "parameters": {
         "jsCode": "const before=$('Prepare Bounded Search Request').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,incoming_message:result.message,last_message:result.message,event_log:[{agent:'search',message:result.message,timestamp:new Date().toISOString()}]}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000011",
+      "id": "efdce975-74ec-4e0c-bcd4-f20cfb3be7ec",
       "name": "Merge Search Patch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2360,
-        100
+        13184,
+        7040
       ]
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
+          "value": "HEEneTO6A6nNTT1l",
           "mode": "list",
-          "cachedResultName": "Select Phase 2 - Verification Agent"
+          "cachedResultUrl": "/workflow/HEEneTO6A6nNTT1l",
+          "cachedResultName": "Phase 2 - Verification Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
         },
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000012",
+      "id": "b91d099a-ba83-4b28-bdb5-759c13585fea",
       "name": "Invoke Re-verification Agent",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        2580,
-        100
+        13408,
+        7040
       ]
     },
     {
       "parameters": {
         "jsCode": "const before=$('Merge Search Patch').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'re_verification',message:result.message,timestamp:new Date().toISOString()}]}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000013",
+      "id": "b5bd5e35-aaf4-4c0c-9de0-4700dee71308",
       "name": "Merge Re-verification Patch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2800,
-        100
+        13632,
+        7040
       ]
     },
     {
@@ -273,62 +312,72 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000014",
+      "id": "fb0393a5-1106-406d-b38a-438f7a548f70",
       "name": "Alert Requested?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3020,
-        360
+        13856,
+        7312
       ]
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
+          "value": "miO0TzEeaJd71X7c",
           "mode": "list",
-          "cachedResultName": "Select Phase 2 - Scam Alert Agent"
+          "cachedResultUrl": "/workflow/miO0TzEeaJd71X7c",
+          "cachedResultName": "Phase 2 - Scam Alert Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
         },
         "options": {
           "waitForSubWorkflow": true
         }
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000015",
+      "id": "7e12dcd7-57e6-4aa2-94c8-83f072a4367b",
       "name": "Invoke Alert Agent",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        3240,
-        230
+        14064,
+        7184
       ]
     },
     {
       "parameters": {
         "jsCode": "const before=$('Alert Requested?').first().json.case_state; const result=$input.first().json; const state={...before,...(result.case_patch??{}),state_version:(before.state_version??0)+1,updated_at:new Date().toISOString()}; return [{json:{case_state:state,last_message:result.message,event_log:[{agent:'alert',message:result.message,timestamp:new Date().toISOString()}]}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000016",
+      "id": "2259f83a-5214-4a6a-b23d-f7978fb354db",
       "name": "Merge Alert Patch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3460,
-        230
+        14288,
+        7184
       ]
     },
     {
       "parameters": {
         "jsCode": "const c = $input.first().json;\nconst state = c.case_state ?? {};\nconst alert = state.final_alert ?? {};\nconst text = typeof alert.public_message === 'string' ? alert.public_message.trim() : '';\nconst allowed = state.verification_status === 'APPROVED'\n  && state.verification?.publication_eligible === true\n  && c.last_message?.message_type === 'ALERT_APPROVED'\n  && Array.isArray(alert.evidence_refs)\n  && alert.evidence_refs.length > 0\n  && text.length > 0;\nreturn [{ json: {\n  ...c,\n  publication_allowed: allowed,\n  publication_reason: allowed ? 'All approval checks passed.' : 'Publication guard rejected this case.',\n  telegram_text: allowed ? text : ''\n} }];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000017",
+      "id": "1f4f729e-fcee-42de-883d-cda6f88fd058",
       "name": "Publication Guard",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3680,
-        230
+        14512,
+        7184
       ]
     },
     {
@@ -353,15 +402,16 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000018",
+      "id": "b71eb020-2a33-477b-87d7-b09274afa6d8",
       "name": "Publication Allowed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3900,
-        230
+        14736,
+        7184
       ]
     },
     {
@@ -369,8 +419,6 @@
         "method": "POST",
         "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "keypair",
         "bodyParameters": {
           "parameters": [
             {
@@ -387,42 +435,43 @@
           "timeout": 30000
         }
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000019",
+      "id": "d4f508a8-2caf-4cbd-b632-fa2a4709e28a",
       "name": "Publish Approved Alert to Telegram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4120,
-        120
+        14944,
+        7072
       ]
     },
     {
       "parameters": {
         "jsCode": "const before=$('Publication Guard').first().json; const receipt=$input.first().json; return [{json:{...before,case_state:{...before.case_state,publication_status:'PUBLISHED',published_at:new Date().toISOString(),telegram_receipt:receipt},next_stage:'PUBLISHED',note:'Approved alert delivered to the configured Telegram test channel.'}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000020",
+      "id": "ed3151b5-bf01-42e1-9457-e46b4ce0292f",
       "name": "Record Publication Receipt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4340,
-        120
+        15168,
+        7072
       ]
     },
     {
       "parameters": {
         "jsCode": "const c=$input.first().json; return [{json:{...c,next_stage:c.next_stage??c.last_message?.recommended_action??'HELD_FOR_REVIEW',note:c.note??'No Telegram call was made unless the publication guard passed.'}}];"
       },
-      "id": "f54dc055-70f5-4f7f-9e44-000000000021",
+      "id": "78192122-87cb-4f57-a944-7d9982dc0b0c",
       "name": "Show Final Case Outcome",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4340,
-        460
+        15168,
+        7408
       ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Receive Frontend Report": {
       "main": [
@@ -673,13 +722,16 @@
       ]
     }
   },
-  "pinData": {},
-  "active": false,
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
+  "versionId": "f6e0c473-dd17-40c8-8292-40229170a99c",
   "meta": {
-    "templateCredsSetupCompleted": false
+    "instanceId": "c174a6a167c0458b29bf5e3f85d1e829f2047ead0a2884d3313edd78d5e51833"
   },
+  "nodeGroups": [],
+  "id": "wb4gQDuDdwmEFpmj",
   "tags": []
 }
