@@ -1,0 +1,19 @@
+{$TLS_HOSTNAME} {
+	encode zstd gzip
+	@blocked path / /home /signin /workflow/* /workflows/* /executions/* /settings/* /rest/* /api/* /healthz /healthz/*
+	handle @blocked {
+		respond "Not found" 404
+	}
+	handle /webhook/* {
+		reverse_proxy n8n:5678
+	}
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+# Keep n8n admin access private. Use SSH port forwarding to reach this listener.
+:5678 {
+	bind 127.0.0.1
+	reverse_proxy n8n:5678
+}
