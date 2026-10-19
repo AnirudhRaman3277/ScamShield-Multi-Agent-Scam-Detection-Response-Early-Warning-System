@@ -1,44 +1,124 @@
+name: scamshield
+
 services:
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: scam-alert-n8n
+  frontend:
+    image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "5678:5678"
-    env_file:
-      - .env
+      - "${FRONTEND_PORT:-8080}:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      n8n:
+        condition: service_healthy
+
+  n8n:
+    image: n8nio/n8n:${N8N_VERSION:-2.9.4}
+    restart: unless-stopped
+    expose:
+      - "5678"
     environment:
-      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_PERSONALIZATION_ENABLED=false
-      - GENERIC_TIMEZONE=Asia/Kolkata
-      - TZ=Asia/Kolkata
-      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
-      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL:-http://localhost:5678/}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set a unique random N8N_ENCRYPTION_KEY in .env}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE:-false}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_PORT: "5678"
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:8080/}
+      N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL:-http://localhost:5678/}
+      N8N_PROXY_HOPS: ${N8N_PROXY_HOPS:-0}
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-n8n}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong unique POSTGRES_PASSWORD in .env}
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: ${EXECUTIONS_DATA_MAX_AGE:-336}
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Kolkata}
+      TZ: ${GENERIC_TIMEZONE:-Asia/Kolkata}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env}
+      OPENAI_MODEL: ${OPENAI_MODEL:?Set OPENAI_MODEL in .env}
+      OPENAI_API_URL: ${OPENAI_API_URL:?Set OPENAI_API_URL in .env}
+      MAX_SEARCH_RESULTS: ${MAX_SEARCH_RESULTS:-5}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      ollama:
-        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5678/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-n8n}
+      POSTGRES_USER: ${POSTGRES_USER:-n8n}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong unique POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   ollama:
     image: ollama/ollama:latest
-    container_name: scam-alert-ollama
+    profiles: [local-llm]
     restart: unless-stopped
     volumes:
       - ollama_data:/root/.ollama
 
   ollama-pull-model:
     image: ollama/ollama:latest
-    container_name: scam-alert-ollama-model-pull
+    profiles: [local-llm]
     restart: "no"
     environment:
-      - OLLAMA_HOST=http://ollama:11434
+      OLLAMA_HOST: http://ollama:11434
     command: ["pull", "${OPENAI_MODEL:-llama3.2:3b}"]
     depends_on:
       ollama:
         condition: service_started
 
+  # Run with `docker compose --profile edge up -d` after supplying TLS_HOSTNAME.
+  # Caddy terminates HTTPS; only ports 80/443 need to be exposed publicly.
+  caddy:
+    image: caddy:2-alpine
+    profiles: [edge]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      TLS_HOSTNAME: ${TLS_HOSTNAME:?Set TLS_HOSTNAME to a DNS name pointing to this server}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_started
+      n8n:
+        condition: service_healthy
+
 volumes:
   n8n_data:
+  postgres_data:
   ollama_data:
+  caddy_data:
+  caddy_config:
